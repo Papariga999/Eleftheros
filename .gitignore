@@ -44,3 +44,5 @@ yarn-error.*
 api/node_modules/
 api/dist/
 api/.env
+
+.vercel
