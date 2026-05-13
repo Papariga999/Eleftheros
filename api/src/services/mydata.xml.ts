@@ -28,8 +28,8 @@ export function buildInvoiceXml(invoice: Invoice, issuer: User): string {
   issuerEl.ele('country').txt('GR');
   issuerEl.ele('branch').txt('0');
 
-  // Counterpart — include only when client AFM is known (B2B)
-  if (invoice.clientAfm) {
+  // Counterpart — include only for B2B (client AFM known and different from issuer)
+  if (invoice.clientAfm && invoice.clientAfm !== issuer.afm) {
     const cp = inv.ele('counterpart');
     cp.ele('vatNumber').txt(invoice.clientAfm);
     cp.ele('country').txt(invoice.clientCountry || 'GR');
