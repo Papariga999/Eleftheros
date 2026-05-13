@@ -211,7 +211,11 @@ export async function deleteExpense(id: string, userId: string): Promise<boolean
 
 export async function seedDemoUser() {
   const email = 'demo@eleftheros.gr';
-  if (await findUserByEmail(email)) return;
+  const existing = await findUserByEmail(email);
+  if (existing) {
+    if (existing.afm !== '122296889') await updateUser(existing.id, { afm: '122296889' });
+    return;
+  }
   const passwordHash = await bcrypt.hash('demo1234', 10);
   const user: User = { id: uuid(), email, passwordHash, fullName: 'Γιώργης Παπαδόπουλος', afm: '122296889', createdAt: new Date().toISOString() };
   await createUser(user);

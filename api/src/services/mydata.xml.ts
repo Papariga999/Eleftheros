@@ -94,10 +94,10 @@ function vatCategoryCode(rate: number): string {
   }
 }
 
-// E3_561_001 = wholesale (B2B / type 1.x), E3_561_003 = retail (B2C / type 2.x)
-// category1_3 (service revenues) is valid with both
-function classificationTypeCode(invoiceType: string): string {
-  return invoiceType.startsWith('2.') ? 'E3_561_003' : 'E3_561_001';
+// E3_561_001 is valid across all invoice types with category1_3 (service revenues).
+// E3_561_003 is forbidden by AADE for type 2.x despite the "retail" naming.
+function classificationTypeCode(_invoiceType: string): string {
+  return 'E3_561_001';
 }
 
 // Payment method: 3 = cash (retail), 5 = on credit (B2B invoices)
