@@ -52,7 +52,7 @@ export function buildInvoiceXml(invoice: Invoice, issuer: User): string {
     det.ele('vatCategory').txt(vatCategoryCode(line.vatRate));
     det.ele('vatAmount').txt(line.vatAmount.toFixed(2));
 
-    const cls = det.ele('icls:incomeClassification');
+    const cls = det.ele('incomeClassification');
     cls.ele('icls:classificationType').txt('E3_561_007');
     cls.ele('icls:classificationCategory').txt('category1_7');
     cls.ele('icls:amount').txt(line.netValue.toFixed(2));
@@ -69,7 +69,7 @@ export function buildInvoiceXml(invoice: Invoice, issuer: User): string {
   sum.ele('totalDeductionsAmount').txt('0.00');
   sum.ele('totalGrossValue').txt(invoice.totalGrossValue.toFixed(2));
 
-  const sumCls = sum.ele('icls:incomeClassification');
+  const sumCls = sum.ele('incomeClassification');
   sumCls.ele('icls:classificationType').txt('E3_561_007');
   sumCls.ele('icls:classificationCategory').txt('category1_7');
   sumCls.ele('icls:amount').txt(invoice.totalNetValue.toFixed(2));
