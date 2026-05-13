@@ -36,6 +36,12 @@ export function buildInvoiceXml(invoice: Invoice, issuer: User): string {
     cp.ele('branch').txt('0');
   }
 
+  // Payment methods — required for retail types (2.x), safe to include for all
+  const pm = inv.ele('paymentMethods');
+  const pmd = pm.ele('paymentMethodDetails');
+  pmd.ele('type').txt(paymentMethodType(invoice.invoiceType));
+  pmd.ele('amount').txt(invoice.totalGrossValue.toFixed(2));
+
   // Invoice header
   const hdr = inv.ele('invoiceHeader');
   hdr.ele('series').txt(invoice.series);
@@ -53,8 +59,8 @@ export function buildInvoiceXml(invoice: Invoice, issuer: User): string {
     det.ele('vatAmount').txt(line.vatAmount.toFixed(2));
 
     const cls = det.ele('incomeClassification');
-    cls.ele('icls:classificationType').txt('E3_561_007');
-    cls.ele('icls:classificationCategory').txt('category1_7');
+    cls.ele('icls:classificationType').txt(classificationTypeCode(invoice.invoiceType));
+    cls.ele('icls:classificationCategory').txt('category1_3');
     cls.ele('icls:amount').txt(line.netValue.toFixed(2));
   });
 
@@ -70,8 +76,8 @@ export function buildInvoiceXml(invoice: Invoice, issuer: User): string {
   sum.ele('totalGrossValue').txt(invoice.totalGrossValue.toFixed(2));
 
   const sumCls = sum.ele('incomeClassification');
-  sumCls.ele('icls:classificationType').txt('E3_561_007');
-  sumCls.ele('icls:classificationCategory').txt('category1_7');
+  sumCls.ele('icls:classificationType').txt(classificationTypeCode(invoice.invoiceType));
+  sumCls.ele('icls:classificationCategory').txt('category1_3');
   sumCls.ele('icls:amount').txt(invoice.totalNetValue.toFixed(2));
 
   return root.end({ prettyPrint: false });
@@ -86,4 +92,15 @@ function vatCategoryCode(rate: number): string {
     case 0:  return '7';  // exempt
     default: return '1';
   }
+}
+
+// E3_561_001 = wholesale (B2B / type 1.x), E3_561_003 = retail (B2C / type 2.x)
+// category1_3 (service revenues) is valid with both
+function classificationTypeCode(invoiceType: string): string {
+  return invoiceType.startsWith('2.') ? 'E3_561_003' : 'E3_561_001';
+}
+
+// Payment method: 3 = cash (retail), 5 = on credit (B2B invoices)
+function paymentMethodType(invoiceType: string): string {
+  return invoiceType.startsWith('2.') ? '3' : '5';
 }

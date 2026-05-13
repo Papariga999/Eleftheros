@@ -213,7 +213,7 @@ export async function seedDemoUser() {
   const email = 'demo@eleftheros.gr';
   if (await findUserByEmail(email)) return;
   const passwordHash = await bcrypt.hash('demo1234', 10);
-  const user: User = { id: uuid(), email, passwordHash, fullName: 'Γιώργης Παπαδόπουλος', afm: '123456789', createdAt: new Date().toISOString() };
+  const user: User = { id: uuid(), email, passwordHash, fullName: 'Γιώργης Παπαδόπουλος', afm: '122296889', createdAt: new Date().toISOString() };
   await createUser(user);
   await seedDemoData(user.id);
   console.log('  Demo user ready → demo@eleftheros.gr / demo1234');
