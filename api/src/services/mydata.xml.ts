@@ -5,13 +5,17 @@ import type { Invoice, User } from '../types/index.js';
  * Builds the XML payload required by AADE myDATA SendInvoices endpoint.
  * Spec: https://www.aade.gr/sites/default/files/2023-11/myDATA%20API%20Documentation_v1.0.9_official.pdf
  *
- * IMPORTANT: The income classification namespace URI contains an official AADE typo —
- * "incomeClassificaton" (missing 'i') — which must be preserved exactly.
+ * Namespace rules (confirmed from firebed/aade-mydata reference implementation):
+ *   - Main invoice ns:  http://  (NOT https)
+ *   - Classification ns: https:// (intentional inconsistency in AADE spec)
+ *   - "incomeClassificaton" is an official AADE typo (missing 'i') — preserve exactly.
  */
 export function buildInvoiceXml(invoice: Invoice, issuer: User): string {
   const root = create({ version: '1.0', encoding: 'UTF-8' })
     .ele('InvoicesDoc', {
-      'xmlns': 'https://www.aade.gr/myDATA/invoice/v1.0',
+      // Main invoice namespace uses http:// — classification namespaces use https://
+      'xmlns': 'http://www.aade.gr/myDATA/invoice/v1.0',
+      'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
       // eslint-disable-next-line @typescript-eslint/naming-convention
       'xmlns:icls': 'https://www.aade.gr/myDATA/incomeClassificaton/v1.0',
     });
