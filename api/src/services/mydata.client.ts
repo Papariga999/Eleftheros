@@ -2,7 +2,8 @@ import { parseStringPromise } from 'xml2js';
 import type { Invoice, MyDataResponse, User } from '../types/index.js';
 import { buildInvoiceXml } from './mydata.xml.js';
 
-// Default to production; override to dev endpoint via MYDATA_BASE_URL env var
+// Production ERP: https://mydatapi.aade.gr/myDATA
+// Dev/test ERP:   https://mydataapidev.aade.gr  (no /myDATA suffix on dev)
 const BASE_URL = process.env.MYDATA_BASE_URL ?? 'https://mydatapi.aade.gr/myDATA';
 const USER_ID  = process.env.MYDATA_USER_ID ?? '';
 const SUB_KEY  = process.env.MYDATA_SUBSCRIPTION_KEY ?? '';
