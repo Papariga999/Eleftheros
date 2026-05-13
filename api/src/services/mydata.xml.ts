@@ -36,12 +36,6 @@ export function buildInvoiceXml(invoice: Invoice, issuer: User): string {
     cp.ele('branch').txt('0');
   }
 
-  // Payment methods — required for retail types (2.x), safe to include for all
-  const pm = inv.ele('paymentMethods');
-  const pmd = pm.ele('paymentMethodDetails');
-  pmd.ele('type').txt(paymentMethodType(invoice.invoiceType));
-  pmd.ele('amount').txt(invoice.totalGrossValue.toFixed(2));
-
   // Invoice header
   const hdr = inv.ele('invoiceHeader');
   hdr.ele('series').txt(invoice.series);
@@ -49,6 +43,12 @@ export function buildInvoiceXml(invoice: Invoice, issuer: User): string {
   hdr.ele('issueDate').txt(invoice.issueDate);
   hdr.ele('invoiceType').txt(invoice.invoiceType);
   hdr.ele('currency').txt(invoice.currency);
+
+  // Payment methods — required for retail types (2.x); must follow invoiceHeader per XSD
+  const pm = inv.ele('paymentMethods');
+  const pmd = pm.ele('paymentMethodDetails');
+  pmd.ele('type').txt(paymentMethodType(invoice.invoiceType));
+  pmd.ele('amount').txt(invoice.totalGrossValue.toFixed(2));
 
   // Invoice details (one element per line item)
   invoice.lines.forEach((line, idx) => {
