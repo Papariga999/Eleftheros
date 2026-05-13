@@ -4,73 +4,82 @@ import type { Invoice, User } from '../types/index.js';
 /**
  * Builds the XML payload required by AADE myDATA SendInvoices endpoint.
  * Spec: https://www.aade.gr/sites/default/files/2023-11/myDATA%20API%20Documentation_v1.0.9_official.pdf
+ *
+ * IMPORTANT: The income classification namespace URI contains an official AADE typo —
+ * "incomeClassificaton" (missing 'i') — which must be preserved exactly.
  */
 export function buildInvoiceXml(invoice: Invoice, issuer: User): string {
-  const doc = create({ version: '1.0', encoding: 'UTF-8' })
-    .ele('InvoicesDoc', { xmlns: 'https://www.aade.gr/myDATA/invoice/v1.0' });
+  const root = create({ version: '1.0', encoding: 'UTF-8' })
+    .ele('InvoicesDoc', {
+      'xmlns': 'https://www.aade.gr/myDATA/invoice/v1.0',
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      'xmlns:icls': 'https://www.aade.gr/myDATA/incomeClassificaton/v1.0',
+    });
 
-  const inv = doc.ele('invoice');
+  const inv = root.ele('invoice');
 
   // Issuer
-  inv.ele('issuer')
-    .ele('vatNumber').txt(issuer.afm).up()
-    .ele('country').txt('GR').up()
-    .ele('branch').txt('0').up();
+  const issuerEl = inv.ele('issuer');
+  issuerEl.ele('vatNumber').txt(issuer.afm);
+  issuerEl.ele('country').txt('GR');
+  issuerEl.ele('branch').txt('0');
 
-  // Counterpart (client)
+  // Counterpart — include only when client AFM is known (B2B)
   if (invoice.clientAfm) {
-    inv.ele('counterpart')
-      .ele('vatNumber').txt(invoice.clientAfm).up()
-      .ele('country').txt(invoice.clientCountry || 'GR').up()
-      .ele('branch').txt('0').up();
+    const cp = inv.ele('counterpart');
+    cp.ele('vatNumber').txt(invoice.clientAfm);
+    cp.ele('country').txt(invoice.clientCountry || 'GR');
+    cp.ele('branch').txt('0');
   }
 
   // Invoice header
-  inv.ele('invoiceHeader')
-    .ele('series').txt(invoice.series).up()
-    .ele('aa').txt(String(invoice.aa)).up()
-    .ele('issueDate').txt(invoice.issueDate).up()
-    .ele('invoiceType').txt(invoice.invoiceType).up()
-    .ele('currency').txt(invoice.currency).up();
+  const hdr = inv.ele('invoiceHeader');
+  hdr.ele('series').txt(invoice.series);
+  hdr.ele('aa').txt(String(invoice.aa));
+  hdr.ele('issueDate').txt(invoice.issueDate);
+  hdr.ele('invoiceType').txt(invoice.invoiceType);
+  hdr.ele('currency').txt(invoice.currency);
 
-  // Invoice details (line items)
+  // Invoice details (one element per line item)
   invoice.lines.forEach((line, idx) => {
-    inv.ele('invoiceDetails')
-      .ele('lineNumber').txt(String(idx + 1)).up()
-      .ele('netValue').txt(line.netValue.toFixed(2)).up()
-      .ele('vatCategory').txt(vatCategoryCode(line.vatRate)).up()
-      .ele('vatAmount').txt(line.vatAmount.toFixed(2)).up()
-      .ele('incomeClassification')
-        .ele('classificationType').txt('E3_561_007').up()
-        .ele('classificationCategory').txt('category1_7').up()
-        .ele('amount').txt(line.netValue.toFixed(2)).up();
+    const det = inv.ele('invoiceDetails');
+    det.ele('lineNumber').txt(String(idx + 1));
+    det.ele('netValue').txt(line.netValue.toFixed(2));
+    det.ele('vatCategory').txt(vatCategoryCode(line.vatRate));
+    det.ele('vatAmount').txt(line.vatAmount.toFixed(2));
+
+    const cls = det.ele('icls:incomeClassification');
+    cls.ele('icls:classificationType').txt('E3_561_007');
+    cls.ele('icls:classificationCategory').txt('category1_7');
+    cls.ele('icls:amount').txt(line.netValue.toFixed(2));
   });
 
   // Invoice summary
-  inv.ele('invoiceSummary')
-    .ele('totalNetValue').txt(invoice.totalNetValue.toFixed(2)).up()
-    .ele('totalVatAmount').txt(invoice.totalVatAmount.toFixed(2)).up()
-    .ele('totalWithheldAmount').txt('0').up()
-    .ele('totalFeesAmount').txt('0').up()
-    .ele('totalStampDutyAmount').txt('0').up()
-    .ele('totalOtherTaxesAmount').txt('0').up()
-    .ele('totalDeductionsAmount').txt('0').up()
-    .ele('totalGrossValue').txt(invoice.totalGrossValue.toFixed(2)).up()
-    .ele('incomeClassification')
-      .ele('classificationType').txt('E3_561_007').up()
-      .ele('classificationCategory').txt('category1_7').up()
-      .ele('amount').txt(invoice.totalNetValue.toFixed(2)).up();
+  const sum = inv.ele('invoiceSummary');
+  sum.ele('totalNetValue').txt(invoice.totalNetValue.toFixed(2));
+  sum.ele('totalVatAmount').txt(invoice.totalVatAmount.toFixed(2));
+  sum.ele('totalWithheldAmount').txt('0.00');
+  sum.ele('totalFeesAmount').txt('0.00');
+  sum.ele('totalStampDutyAmount').txt('0.00');
+  sum.ele('totalOtherTaxesAmount').txt('0.00');
+  sum.ele('totalDeductionsAmount').txt('0.00');
+  sum.ele('totalGrossValue').txt(invoice.totalGrossValue.toFixed(2));
 
-  return doc.end({ prettyPrint: false });
+  const sumCls = sum.ele('icls:incomeClassification');
+  sumCls.ele('icls:classificationType').txt('E3_561_007');
+  sumCls.ele('icls:classificationCategory').txt('category1_7');
+  sumCls.ele('icls:amount').txt(invoice.totalNetValue.toFixed(2));
+
+  return root.end({ prettyPrint: false });
 }
 
-// myDATA VAT category codes
+// myDATA VAT category codes (per spec table)
 function vatCategoryCode(rate: number): string {
   switch (rate) {
     case 24: return '1';
     case 13: return '2';
     case 6:  return '3';
-    case 0:  return '7';   // 0% exempt
+    case 0:  return '7';  // exempt
     default: return '1';
   }
 }

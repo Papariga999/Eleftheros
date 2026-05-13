@@ -1,0 +1,3 @@
+# The api/ subdirectory is deployed as a separate Vercel project.
+# Ignore it here so its vercel.json does not interfere with the Expo static build.
+api/

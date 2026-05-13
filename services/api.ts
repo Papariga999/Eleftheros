@@ -126,6 +126,8 @@ export const invoices = {
   get: (id: string) => request<Invoice>(`/invoices/${id}`),
   create: (body: CreateInvoiceBody) =>
     request<Invoice>('/invoices', { method: 'POST', body: JSON.stringify(body) }),
+  submit: (id: string) =>
+    request<Invoice>(`/invoices/${id}/submit`, { method: 'POST' }),
   cancel: (id: string) =>
     request<Invoice>(`/invoices/${id}/cancel`, { method: 'POST' }),
 };

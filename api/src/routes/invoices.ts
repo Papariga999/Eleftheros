@@ -35,6 +35,11 @@ router.post('/', async (req, res) => {
   const user = await store.findUserById(userId);
   if (!user) { res.status(404).json({ error: 'User not found' }); return; }
 
+  if (!user.afm) {
+    res.status(400).json({ error: 'Complete your profile with a valid ΑΦΜ before issuing invoices' });
+    return;
+  }
+
   // Compute line-level amounts
   const lines: InvoiceLine[] = body.lines.map(l => {
     const qty = l.quantity ?? 1;
@@ -110,6 +115,30 @@ router.post('/:id/cancel', async (req, res) => {
     const updated = await store.updateInvoice(inv.id, {
       status: 'cancelled',
       mark: cancellationMark,
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(502).json({ error: (err as Error).message });
+  }
+});
+
+// ── POST /invoices/:id/submit ─────────────────────────────────────────────────
+// Retry myDATA submission for a draft invoice (e.g. after a previous failure)
+router.post('/:id/submit', async (req, res) => {
+  const inv = await store.findInvoice(req.params.id, req.user!.userId);
+  if (!inv) { res.status(404).json({ error: 'Invoice not found' }); return; }
+  if (inv.status !== 'draft') {
+    res.status(400).json({ error: 'Only draft invoices can be resubmitted' });
+    return;
+  }
+
+  const user = await store.findUserById(req.user!.userId);
+  if (!user) { res.status(404).json({ error: 'User not found' }); return; }
+
+  try {
+    const { mark, uid, authenticationCode } = await sendInvoice(inv, user);
+    const updated = await store.updateInvoice(inv.id, {
+      status: 'submitted', mark, uid, authenticationCode,
     });
     res.json(updated);
   } catch (err) {

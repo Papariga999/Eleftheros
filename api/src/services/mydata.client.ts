@@ -2,10 +2,11 @@ import { parseStringPromise } from 'xml2js';
 import type { Invoice, MyDataResponse, User } from '../types/index.js';
 import { buildInvoiceXml } from './mydata.xml.js';
 
-const BASE_URL = process.env.MYDATA_BASE_URL ?? 'https://mydataapidev.aade.gr/myDATA';
-const USER_ID = process.env.MYDATA_USER_ID ?? '';
-const SUB_KEY = process.env.MYDATA_SUBSCRIPTION_KEY ?? '';
-const MOCK = process.env.MYDATA_MOCK === 'true';
+// Default to production; override to dev endpoint via MYDATA_BASE_URL env var
+const BASE_URL = process.env.MYDATA_BASE_URL ?? 'https://mydatapi.aade.gr/myDATA';
+const USER_ID  = process.env.MYDATA_USER_ID ?? '';
+const SUB_KEY  = process.env.MYDATA_SUBSCRIPTION_KEY ?? '';
+const MOCK     = process.env.MYDATA_MOCK === 'true';
 
 function headers(): Record<string, string> {
   return {
@@ -33,22 +34,28 @@ export async function sendInvoice(invoice: Invoice, issuer: User): Promise<{
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`myDATA SendInvoices error ${res.status}: ${text}`);
+    throw new Error(`myDATA ${res.status}: ${text}`);
   }
 
   const raw = await res.text();
   const parsed = await parseStringPromise(raw, { explicitArray: false });
-  const entry = parsed?.ResponseDoc?.response;
+
+  // AADE wraps the result in ResponseDoc > response (object for 1 invoice, array for batch)
+  const rawEntry = parsed?.ResponseDoc?.response;
+  const entry = Array.isArray(rawEntry) ? rawEntry[0] : rawEntry;
 
   if (!entry || entry.statusCode !== 'Success') {
-    const errMsg = entry?.errors?.error?.message ?? 'Unknown myDATA error';
-    throw new Error(`myDATA rejected invoice: ${errMsg}`);
+    const errObj = entry?.errors?.error;
+    const errMsg = Array.isArray(errObj)
+      ? errObj.map((e: { message: string }) => e.message).join('; ')
+      : (errObj?.message ?? entry?.statusCode ?? 'Unknown myDATA error');
+    throw new Error(`myDATA rejected: ${errMsg}`);
   }
 
   return {
-    mark: entry.invoiceMark,
-    uid: entry.invoiceUid,
-    authenticationCode: entry.authenticationCode,
+    mark: String(entry.invoiceMark),
+    uid: String(entry.invoiceUid),
+    authenticationCode: String(entry.authenticationCode),
   };
 }
 
@@ -68,7 +75,7 @@ export async function requestMyInvoices(afm: string, dateFrom?: string, dateTo?:
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`myDATA RequestMyInvoices error ${res.status}: ${text}`);
+    throw new Error(`myDATA RequestMyInvoices ${res.status}: ${text}`);
   }
 
   const raw = await res.text();
@@ -88,19 +95,20 @@ export async function cancelInvoice(mark: string): Promise<{ cancellationMark: s
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`myDATA CancelInvoice error ${res.status}: ${text}`);
+    throw new Error(`myDATA CancelInvoice ${res.status}: ${text}`);
   }
 
   const raw = await res.text();
   const parsed = await parseStringPromise(raw, { explicitArray: false });
-  return { cancellationMark: parsed?.ResponseDoc?.response?.cancellationMark ?? '' };
+  const cancellationMark = parsed?.ResponseDoc?.response?.cancellationMark ?? '';
+  return { cancellationMark: String(cancellationMark) };
 }
 
 // ── Mock helpers ──────────────────────────────────────────────────────────────
 
 function mockSendInvoice(invoice: Invoice) {
   const mark = String(Math.floor(Math.random() * 9_000_000_000) + 1_000_000_000);
-  const uid = `${invoice.issueDate.replace(/-/g, '')}${mark}`;
+  const uid  = `${invoice.issueDate.replace(/-/g, '')}${mark}`;
   console.log(`[myDATA mock] SendInvoice → MARK ${mark}`);
   return { mark, uid, authenticationCode: `AUTH${mark.slice(0, 6)}` };
 }
